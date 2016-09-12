@@ -1,0 +1,114 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+
+---
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+
+## Loading and preprocessing the data
+```{r}
+library(dplyr)
+setwd("C:/Users/uszlj8j/Desktop/Learning R/Data Science CourseRA/R_Reproducable_Research")
+Activity <- read.csv("activity.csv", header = TRUE)
+
+View(head(Activity))
+Activity$steps <- as.numeric(Activity$steps)
+Activity$interval <- as.numeric(Activity$interval)
+
+```
+
+
+
+
+## What is mean total number of steps taken per day?
+```{r, echo=TRUE}
+
+#Calculate the number of Steps per day
+
+Nbr_steps <- select(Activity, date, steps) %>% group_by(date) %>% summarise(Steps_per_day = sum(steps))
+
+hist(Nbr_steps$Steps_per_day)
+
+#Mean and Standard Deviation of steps per day
+
+Mean_Median_steps <- Nbr_steps %>% summarise(Mean_Steps_per_day = mean(Steps_per_day, na.rm = TRUE), 
+                                           Median_Steps_per_day = median(Steps_per_day, na.rm = TRUE))
+
+Mean_Median_steps
+```
+
+
+
+## What is the average daily activity pattern?
+```{r, echo=TRUE}
+
+data <- select(Activity,interval, steps) %>% group_by(interval) %>% 
+                        summarise(Avg_Steps_per_interval = mean(steps, na.rm = TRUE))
+
+plot( x=data$interval, y=data$Avg_Steps_per_interval, type="l")
+
+
+#Which interval contains max number of steps
+# Answer: Interval 835 by looking at the output dataset
+
+```
+
+
+
+## Imputing missing values
+```{r}
+
+#Count the number of NAs
+Steps_NA <- sum(is.na(Activity$steps))
+Steps_NA
+
+
+#Impute Missing Values, use Mean for the Interval to impute missing values
+#Create a new dataframe
+Activity_Impute <- Activity %>% group_by(interval) %>% mutate(ifelse(is.na(steps),mean(steps, na.rm = TRUE),steps))
+colnames(Activity_Impute)[4] = "Steps_Imputed"
+
+
+#Calculate the number of Steps per day
+
+Nbr_steps_Impute <- select(Activity_Impute, date, Steps_Imputed) %>% group_by(date) %>% summarise(Steps_per_day = sum(Steps_Imputed))
+
+hist(Nbr_steps_Impute$Steps_per_day)
+
+
+#Calculate Mean and Median Steps per day
+
+Mean_Median_steps_Impute <- ungroup(Activity_Impute) %>% select(Steps_Imputed)  %>% 
+                            summarise(Mean_Steps_per_day = mean(Steps_Imputed), 
+                                    Median_Steps_per_day = median(Steps_Imputed))
+
+Mean_Median_steps_Impute
+
+```
+
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+
+#Convert date variable into Date funciton, create a new variable that gives the weekday
+
+Activity_Impute$date <- as.Date(Activity_Impute$date)
+
+Activity_Impute <- Activity_Impute %>% mutate(weekdays = weekdays(date))
+Activity_Impute <- Activity_Impute %>% mutate(Week_Type = ifelse((weekdays %in% c("Saturday", "Sunday")),"Week_End", "Week_Day"))
+
+Week_day <- select(Activity_Impute,interval, Steps_Imputed, Week_Type) %>% filter(Week_Type == "Week_Day") %>%
+             group_by(interval, Week_Type) %>% summarise(Avg_Steps_per_interval = mean(Steps_Imputed, na.rm = TRUE))
+
+Week_End <- select(Activity_Impute,interval, Steps_Imputed, Week_Type) %>% filter(Week_Type == "Week_End") %>%
+             group_by(interval, Week_Type) %>% summarise(Avg_Steps_per_interval = mean(Steps_Imputed, na.rm = TRUE))
+
+ 
+par(mfrow=c(2,1)) 
+plot(x= Week_day$interval, y=Week_day$Avg_Steps_per_interval, type = "l")
+plot(x= Week_End$interval, y=Week_End$Avg_Steps_per_interval, type = "l")
+
+```
+
